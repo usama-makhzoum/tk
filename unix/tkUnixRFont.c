@@ -13,6 +13,9 @@
 #include "tkFont.h"
 #include <X11/Xft/Xft.h>
 
+int TkpPerformBidi(char *, int, int , char *) ;
+
+
 #define MAX_CACHED_COLORS 16
 
 typedef struct {
@@ -922,6 +925,14 @@ Tk_DrawChars(
     int x, int y)		/* Coordinates at which to place origin of
 				 * string when drawing. */
 {
+
+    int newNumBytes;
+    char *biDiSourceString;
+
+    newNumBytes =    TkpPerformBidi(source, numBytes, 1 , NULL);
+    biDiSourceString =  ckalloc(newNumBytes+1); 
+    TkpPerformBidi(source, numBytes, 0, biDiSourceString);      /* This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
+
     const int maxCoord = 0x7FFF;/* Xft coordinates are 16 bit values */
     const int minCoord = -maxCoord-1;
     UnixFtFont *fontPtr = (UnixFtFont *) tkfont;
@@ -953,11 +964,11 @@ Tk_DrawChars(
 	XftDrawSetClip(fontPtr->ftDraw, tsdPtr->clipRegion);
     }
     nspec = 0;
-    while (numBytes > 0) {
+    while (newNumBytes > 0) {
 	XftFont *ftFont;
 	FcChar32 c;
 
-	clen = utf8ToUcs4(source, &c, numBytes);
+	clen = utf8ToUcs4(biDiSourceString, &c, newNumBytes);
 	if (clen <= 0) {
 	    /*
 	     * This should not happen, but it can.
@@ -965,8 +976,8 @@ Tk_DrawChars(
 
 	    goto doUnderlineStrikeout;
 	}
-	source += clen;
-	numBytes -= clen;
+	biDiSourceString += clen;
+	newNumBytes -= clen;
 
 	ftFont = GetFont(fontPtr, c, 0.0);
 	if (ftFont) {
@@ -1013,6 +1024,7 @@ Tk_DrawChars(
 		(unsigned) (x - xStart),
 		(unsigned) fontPtr->font.underlineHeight);
     }
+   
 }
 
 /*
@@ -1396,6 +1408,47 @@ TkUnixSetXftClipRegion(
 
     tsdPtr->clipRegion = clipRegion;
 }
+
+Tk_TextLayout
+TkUnixComputeTextLayout(
+    Tk_Font tkfont,		/* Font that will be used to display text. */
+    const char *string,		/* String whose dimensions are to be
+				 * computed. */
+    int numChars,		/* Number of characters to consider from
+				 * string, or < 0 for strlen(). */
+    int wrapLength,		/* Longest permissible line length, in pixels.
+				 * <= 0 means no automatic wrapping: just let
+				 * lines get as long as needed. */
+    Tk_Justify justify,		/* How to justify lines. */
+    int flags,			/* Flag bits OR-ed together. TK_IGNORE_TABS
+				 * means that tab characters should not be
+				 * expanded. TK_IGNORE_NEWLINES means that
+				 * newline characters should not cause a line
+				 * break. */
+    int *widthPtr,		/* Filled with width of string. */
+    int *heightPtr)
+{
+    char *bidiString = malloc(1000*sizeof(char));
+    int bidiNumChars =  TkpPerformBidi(string,  numChars, 0 , bidiString);
+    return Tk_ComputeTextLayout(
+				tkfont,		/* Font that will be used to display text. */
+    bidiString,		/* String whose dimensions are to be
+			 * computed. */
+     bidiNumChars,		/* Number of characters to consider from
+				 * string, or < 0 for strlen(). */
+     wrapLength,		/* Longest permissible line length, in pixels.
+			 * <= 0 means no automatic wrapping: just let
+				 * lines get as long as needed. */
+     justify,		/* How to justify lines. */
+     flags,			/* Flag bits OR-ed together. TK_IGNORE_TABS
+				 * means that tab characters should not be
+				 * expanded. TK_IGNORE_NEWLINES means that
+				 * newline characters should not cause a line
+				 * break. */
+     widthPtr,		/* Filled with width of string. */
+     heightPtr);
+}
+
 
 /*
  * Local Variables:
