@@ -12,8 +12,12 @@
 #include "tkUnixInt.h"
 #include "tkFont.h"
 #include <X11/Xft/Xft.h>
+#include "fribidi.h"
+#include "fribidi-unicode.h"
 
-int TkpPerformBidi(char *, int, int , char *) ;
+#define FRIBIDI_MAX_STR_LEN 65000
+
+int TkpPerformBidi(const char *, int, int , char *) ;
 
 
 #define MAX_CACHED_COLORS 16
@@ -713,6 +717,13 @@ Tk_MeasureChars(
     int *lengthPtr)		/* Filled with x-location just after the
 				 * terminating character. */
 {
+    int newNumBytes = numBytes;
+    char *biDiSourceString = source;
+
+    /* newNumBytes =  TkpPerformBidi(source, numBytes, 1 , NULL);
+    biDiSourceString =  ckalloc(newNumBytes+1); 
+    TkpPerformBidi(source, numBytes, 0, biDiSourceString);      /* This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
+    
     UnixFtFont *fontPtr = (UnixFtFont *) tkfont;
     XftFont *ftFont;
     FcChar32 c;
@@ -730,7 +741,7 @@ Tk_MeasureChars(
     curX = 0;
     curByte = 0;
     sawNonSpace = 0;
-    while (numBytes > 0) {
+    while (newNumBytes > 0) {
 	int unichar;
 
 	clen = TkUtfToUniChar(source, &unichar);
@@ -746,7 +757,7 @@ Tk_MeasureChars(
 	}
 
 	source += clen;
-	numBytes -= clen;
+	newNumBytes -= clen;
 	if (c < 256 && isspace(c)) {		/* I18N: ??? */
 	    if (sawNonSpace) {
 		termByte = curByte;
@@ -1408,6 +1419,8 @@ TkUnixSetXftClipRegion(
 
     tsdPtr->clipRegion = clipRegion;
 }
+/* a wrapper around Tk_TextLayout that use BiDi string (instead of the normal 'unshaped' string ), this will make difference with some scripts like arabic and persian. 
+ */
 
 Tk_TextLayout
 TkUnixComputeTextLayout(
@@ -1428,25 +1441,67 @@ TkUnixComputeTextLayout(
     int *widthPtr,		/* Filled with width of string. */
     int *heightPtr)
 {
-    char *bidiString = malloc(1000*sizeof(char));
+
+
+    char *bidiString = malloc(FRIBIDI_MAX_STR_LEN*sizeof(char));
     int bidiNumChars =  TkpPerformBidi(string,  numChars, 0 , bidiString);
-    return Tk_ComputeTextLayout(
-				tkfont,		/* Font that will be used to display text. */
-    bidiString,		/* String whose dimensions are to be
-			 * computed. */
-     bidiNumChars,		/* Number of characters to consider from
-				 * string, or < 0 for strlen(). */
-     wrapLength,		/* Longest permissible line length, in pixels.
-			 * <= 0 means no automatic wrapping: just let
-				 * lines get as long as needed. */
-     justify,		/* How to justify lines. */
-     flags,			/* Flag bits OR-ed together. TK_IGNORE_TABS
-				 * means that tab characters should not be
-				 * expanded. TK_IGNORE_NEWLINES means that
-				 * newline characters should not cause a line
-				 * break. */
-     widthPtr,		/* Filled with width of string. */
-     heightPtr);
+    Tk_TextLayout textLayout =  Tk_ComputeTextLayout(tkfont,	
+				bidiString,	
+				bidiNumChars,	
+				wrapLength,		
+				justify,
+				flags,			
+				widthPtr,	
+				heightPtr);
+    free(bidiString);
+    return textLayout;
+}
+
+int  TkpPerformBidi(const char *source,
+		    int numBytes,
+		    int computeOnly,
+		    char *bidiString )
+{
+  
+  if (numBytes < 0)
+    {
+    numBytes = strlen(source) +1 ;
+    }
+  if (computeOnly)
+    {
+	bidiString = (char *) malloc(FRIBIDI_MAX_STR_LEN*sizeof(char));
+    }
+  
+    FriBidiChar unicode_source[FRIBIDI_MAX_STR_LEN];
+    FriBidiStrIndex unicode_len = fribidi_utf8_to_unicode(source, numBytes, unicode_source);
+
+
+    FriBidiChar unicode_output[FRIBIDI_MAX_STR_LEN];
+
+    FriBidiStrIndex V2LPositions[FRIBIDI_MAX_STR_LEN];
+    FriBidiStrIndex L2VPositions[FRIBIDI_MAX_STR_LEN];
+    FriBidiLevel levels[FRIBIDI_BIDI_MAX_EXPLICIT_LEVEL];
+
+
+
+    FriBidiParType pbase_dir = FRIBIDI_TYPE_ON;
+  
+    fribidi_log2vis(unicode_source,
+		    unicode_len,
+		    &pbase_dir,
+		    unicode_output,
+		    V2LPositions,
+		    L2VPositions,
+		    levels);
+    
+  unicode_len  =   fribidi_remove_bidi_marks (unicode_output, unicode_len, V2LPositions, L2VPositions, levels);
+     
+   int utf8_output_len = fribidi_unicode_to_utf8 (unicode_output, unicode_len, bidiString);
+
+   if (computeOnly)
+     free(bidiString);
+   
+    return utf8_output_len;
 }
 
 

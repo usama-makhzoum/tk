@@ -264,7 +264,7 @@ TCL_STUB_FLAGS		= @TCL_STUB_FLAGS@
 
 # Libraries to use when linking.  This definition is determined by the
 # configure script.
-LIBS = @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@
+LIBS = @LIBS@ $(X11_LIB_SWITCHES) $(FRIBIDI_LIBS) @TCL_LIBS@
 WISH_LIBS = $(TCL_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
 
 # The symbols below provide support for dynamic loading and shared
@@ -296,6 +296,8 @@ REZ_SWITCHES = @REZ_FLAGS@ -i $(GENERIC_DIR) -i $(TCL_GENERIC_DIR)
 # support for Xft:
 XFT_CFLAGS		= @XFT_CFLAGS@
 XFT_LIBS		= @XFT_LIBS@
+FRIBIDI_FLAGS           = @FRIBIDI_CFLAGS@
+FRIBIDI_LIBS		= @FRIBIDI_LIBS@
 
 #----------------------------------------------------------------
 # The information below is modified by the configure script when
@@ -1234,7 +1236,7 @@ tkUnixFont.o: $(UNIX_DIR)/tkUnixFont.c
 
 # NB: tkUnixRFont.o uses nondefault CFLAGS
 tkUnixRFont.o: $(UNIX_DIR)/tkUnixRFont.c
-	$(CC) -c $(CC_SWITCHES) $(XFT_CFLAGS) $(UNIX_DIR)/tkUnixRFont.c
+	$(CC) -c $(CC_SWITCHES) $(XFT_CFLAGS) $(FRIBIDI_FLAGS) $(UNIX_DIR)/tkUnixRFont.c
 
 tkUnixInit.o: $(UNIX_DIR)/tkUnixInit.c tkConfig.sh
 	$(CC) -c $(CC_SWITCHES) \

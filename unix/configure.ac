@@ -474,6 +474,27 @@ if test $tk_aqua = no; then
             enable_xft=yes
 	fi
     fi
+
+    dnl make fribidi flags
+    	found_fribidi="no"
+    	if test "$found_fribidi" = "no" ; then
+	    found_fribidi=yes
+	    FRIBIDI_CFLAGS=`pkg-config --cflags fribidi 2>/dev/null` || found_fribidi="no"
+	    FRIBIDI_LIBS=`pkg-config --libs fribidi 2>/dev/null` || found_fribidi="no"
+	fi
+	AC_MSG_RESULT([$found_fribidi])
+
+    dnl link fribidi if using xft
+      tk_oldCFlags=$CFLAGS
+	    CFLAGS="$CFLAGS  $FRIBIDI_CFLAGS"
+	    tk_oldLibs=$LIBS
+	    LIBS="$tk_oldLIBS $FRIBIDI_LIBS"
+	    AC_CHECK_HEADER(fribidi/fribidi.h, [], [
+		found_fribidi=no
+	    ],[#include <fribidi.h>])
+	    CFLAGS=$tk_oldCFlags
+	    LIBS=$tk_oldLibs
+		
     if test $enable_xft = "yes" ; then
 	UNIX_FONT_OBJS=tkUnixRFont.o
 	AC_DEFINE(HAVE_XFT, 1, [Have we turned on XFT (antialiased fonts)?])
@@ -482,6 +503,8 @@ if test $tk_aqua = no; then
     fi
     AC_SUBST(XFT_CFLAGS)
     AC_SUBST(XFT_LIBS)
+    AC_SUBST(FRIBIDI_CFLAGS)
+    AC_SUBST(FRIBIDI_LIBS)
     AC_SUBST(UNIX_FONT_OBJS)
 fi
 
