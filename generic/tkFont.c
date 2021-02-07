@@ -17,6 +17,15 @@
 #include "tkMacOSXInt.h"    /* Defines TK_DRAW_IN_CONTEXT */
 #endif
 
+int
+Tk_MeasureCharsForDraw(
+		       Tk_Font tkfont,	
+		       const char *source,
+		       int numBytes,	          
+		       int maxLength,      
+		       int flags,		
+		       int *lengthPtr)	;	
+
 /*
  * The following structure is used to keep track of all the fonts that exist
  * in the current application. It must be stored in the TkMainInfo for the
@@ -2055,6 +2064,11 @@ Tk_ComputeTextLayout(
 	if (start < special) {
 	    bytesThisChunk = Tk_MeasureChars(tkfont, start, special - start,
 		    wrapLength - curX, flags, &newX);
+
+#if defined HAVE_XFT
+	    Tk_MeasureCharsForDraw(tkfont, start, special - start,
+		    wrapLength - curX, flags, &newX);
+#endif
 	    newX += curX;
 	    flags &= ~TK_AT_LEAST_ONE;
 	    if (bytesThisChunk > 0) {
