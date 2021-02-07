@@ -13,6 +13,26 @@
 #include "tkButton.h"
 #include "tk3d.h"
 
+
+Tk_TextLayout
+TkUnixComputeTextLayout(
+    Tk_Font tkfont,		/* Font that will be used to display text. */
+    const char *string,		/* String whose dimensions are to be
+				 * computed. */
+    int numChars,		/* Number of characters to consider from
+				 * string, or < 0 for strlen(). */
+    int wrapLength,		/* Longest permissible line length, in pixels.
+				 * <= 0 means no automatic wrapping: just let
+				 * lines get as long as needed. */
+    Tk_Justify justify,		/* How to justify lines. */
+    int flags,			/* Flag bits OR-ed together. TK_IGNORE_TABS
+				 * means that tab characters should not be
+				 * expanded. TK_IGNORE_NEWLINES means that
+				 * newline characters should not cause a line
+				 * break. */
+    int *widthPtr,		/* Filled with width of string. */
+    int *heightPtr);
+
 /*
  * Shared with menu widget.
  */

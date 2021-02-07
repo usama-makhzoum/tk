@@ -2325,7 +2325,7 @@ Tk_DrawTextLayout(
 		firstByte = chunkPtr->start;
 	    } else {
 		firstByte = Tcl_UtfAtIndex(chunkPtr->start, firstChar);
-		Tk_MeasureChars(layoutPtr->tkfont, chunkPtr->start,
+		Tk_MeasureCharsForDraw(layoutPtr->tkfont, chunkPtr->start,
 			firstByte - chunkPtr->start, -1, 0, &drawX);
 	    }
 	    if (lastChar < numDisplayChars) {

@@ -14,9 +14,10 @@
 #include <X11/Xft/Xft.h>
 #include "fribidi.h"
 #include "fribidi-unicode.h"
+#include <string.h>
 
 #define FRIBIDI_MAX_STR_LEN 65000
-
+#undef Tk_ComputeTextLayout
 int TkpPerformBidi(const char *, int, int , char *) ;
 
 
@@ -717,13 +718,17 @@ Tk_MeasureChars(
     int *lengthPtr)		/* Filled with x-location just after the
 				 * terminating character. */
 {
-    int newNumBytes = numBytes;
-    char *biDiSourceString = source;
-
-    /* newNumBytes =  TkpPerformBidi(source, numBytes, 1 , NULL);
-    biDiSourceString =  ckalloc(newNumBytes+1); 
-    TkpPerformBidi(source, numBytes, 0, biDiSourceString);      /* This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
     
+    char *biDiSourceString ;
+    int newNumBytes = numBytes;
+
+    // newNumBytes =  TkpPerformBidi(source, numBytes, 1 , NULL);
+    //biDiSourceString =  ckalloc(newNumBytes+1); 
+    //TkpPerformBidi(source, numBytes, 0, biDiSourceString);   /*   This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
+
+       biDiSourceString =  source;
+
+    // newNumBytes = numBytes;
     UnixFtFont *fontPtr = (UnixFtFont *) tkfont;
     XftFont *ftFont;
     FcChar32 c;
@@ -744,7 +749,7 @@ Tk_MeasureChars(
     while (newNumBytes > 0) {
 	int unichar;
 
-	clen = TkUtfToUniChar(source, &unichar);
+	clen = TkUtfToUniChar(biDiSourceString, &unichar);
 	c = (FcChar32) unichar;
 
 	if (clen <= 0) {
@@ -756,7 +761,7 @@ Tk_MeasureChars(
 	    return curByte;
 	}
 
-	source += clen;
+	biDiSourceString += clen;
 	newNumBytes -= clen;
 	if (c < 256 && isspace(c)) {		/* I18N: ??? */
 	    if (sawNonSpace) {
@@ -938,11 +943,13 @@ Tk_DrawChars(
 {
 
     int newNumBytes;
+    //= numBytes;
     char *biDiSourceString;
+    //= source;
 
     newNumBytes =    TkpPerformBidi(source, numBytes, 1 , NULL);
-    biDiSourceString =  ckalloc(newNumBytes+1); 
-    TkpPerformBidi(source, numBytes, 0, biDiSourceString);      /* This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
+     biDiSourceString =  ckalloc(newNumBytes+1); 
+      TkpPerformBidi(source, numBytes, 0, biDiSourceString);      /* This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
 
     const int maxCoord = 0x7FFF;/* Xft coordinates are 16 bit values */
     const int minCoord = -maxCoord-1;
@@ -1419,92 +1426,115 @@ TkUnixSetXftClipRegion(
 
     tsdPtr->clipRegion = clipRegion;
 }
-/* a wrapper around Tk_TextLayout that use BiDi string (instead of the normal 'unshaped' string ), this will make difference with some scripts like arabic and persian. 
- */
 
-Tk_TextLayout
-TkUnixComputeTextLayout(
-    Tk_Font tkfont,		/* Font that will be used to display text. */
-    const char *string,		/* String whose dimensions are to be
-				 * computed. */
-    int numChars,		/* Number of characters to consider from
-				 * string, or < 0 for strlen(). */
-    int wrapLength,		/* Longest permissible line length, in pixels.
-				 * <= 0 means no automatic wrapping: just let
-				 * lines get as long as needed. */
-    Tk_Justify justify,		/* How to justify lines. */
-    int flags,			/* Flag bits OR-ed together. TK_IGNORE_TABS
-				 * means that tab characters should not be
-				 * expanded. TK_IGNORE_NEWLINES means that
-				 * newline characters should not cause a line
-				 * break. */
-    int *widthPtr,		/* Filled with width of string. */
-    int *heightPtr)
+
+
+int  TkpPerformBidi( const char *source,
+		      int numBytes,
+		      int computeOnly,
+		      char *bidiString)
 {
 
-
-    char *bidiString = malloc(FRIBIDI_MAX_STR_LEN*sizeof(char));
-    int bidiNumChars =  TkpPerformBidi(string,  numChars, 0 , bidiString);
-    Tk_TextLayout textLayout =  Tk_ComputeTextLayout(tkfont,	
-				bidiString,	
-				bidiNumChars,	
-				wrapLength,		
-				justify,
-				flags,			
-				widthPtr,	
-				heightPtr);
-    free(bidiString);
-    return textLayout;
-}
-
-int  TkpPerformBidi(const char *source,
-		    int numBytes,
-		    int computeOnly,
-		    char *bidiString )
-{
-  
-  if (numBytes < 0)
-    {
-    numBytes = strlen(source) +1 ;
-    }
-  if (computeOnly)
+     if (computeOnly)
     {
 	bidiString = (char *) malloc(FRIBIDI_MAX_STR_LEN*sizeof(char));
     }
-  
-    FriBidiChar unicode_source[FRIBIDI_MAX_STR_LEN];
+
+     if (numBytes < 0)
+	 {
+	     numBytes = strlen(source);
+
+	 }
+     
+  FriBidiChar *unicode_source= malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
     FriBidiStrIndex unicode_len = fribidi_utf8_to_unicode(source, numBytes, unicode_source);
 
 
-    FriBidiChar unicode_output[FRIBIDI_MAX_STR_LEN];
+    FriBidiChar *unicode_output = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
 
-    FriBidiStrIndex V2LPositions[FRIBIDI_MAX_STR_LEN];
-    FriBidiStrIndex L2VPositions[FRIBIDI_MAX_STR_LEN];
-    FriBidiLevel levels[FRIBIDI_BIDI_MAX_EXPLICIT_LEVEL];
+    FriBidiStrIndex *V2LPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
+    FriBidiStrIndex *L2VPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
+    FriBidiLevel *levels = malloc (FRIBIDI_BIDI_MAX_EXPLICIT_LEVEL*sizeof(FriBidiLevel));
 
 
 
-    FriBidiParType pbase_dir = FRIBIDI_TYPE_ON;
+    FriBidiParType *pbase_dir = malloc(sizeof(FriBidiParType));
+    *pbase_dir = FRIBIDI_TYPE_ON;
   
     fribidi_log2vis(unicode_source,
 		    unicode_len,
-		    &pbase_dir,
+		    pbase_dir,
 		    unicode_output,
 		    V2LPositions,
 		    L2VPositions,
 		    levels);
     
-  unicode_len  =   fribidi_remove_bidi_marks (unicode_output, unicode_len, V2LPositions, L2VPositions, levels);
-     
-   int utf8_output_len = fribidi_unicode_to_utf8 (unicode_output, unicode_len, bidiString);
+  unicode_len  =   fribidi_remove_bidi_marks (unicode_output, unicode_len, V2LPositions, L2VPositions, levels);     
+  int utf8_output_len =
+  fribidi_unicode_to_utf8 (unicode_output, unicode_len, bidiString);
 
-   if (computeOnly)
-     free(bidiString);
-   
-    return utf8_output_len;
-}
+   free (unicode_source);
+  free(unicode_output);
+
+  free(V2LPositions);
+  free(L2VPositions);
+  free(levels);
+
+  free(pbase_dir);
+  if (computeOnly)
+      free(bidiString);
+
+  //realloc(bidiString, utf8_output_len );
+  
+  return utf8_output_len;
+ }
 
 
+
+int
+Tk_MeasureCharsForDraw(
+    Tk_Font tkfont,		/* Font in which characters will be drawn. */
+    const char *source,		/* UTF-8 string to be displayed. Need not be
+				 * '\0' terminated. */
+    int numBytes,		/* Maximum number of bytes to consider from
+				 * source string. */
+    int maxLength,		/* If >= 0, maxLength specifies the longest
+				 * permissible line length in pixels; don't
+				 * consider any character that would cross
+				 * this x-position. If < 0, then line length
+				 * is unbounded and the flags argument is
+				 * ignored. */
+    int flags,			/* Various flag bits OR-ed together:
+				 * TK_PARTIAL_OK means include the last char
+				 * which only partially fit on this line.
+				 * TK_WHOLE_WORDS means stop on a word
+				 * boundary, if possible. TK_AT_LEAST_ONE
+				 * means return at least one character even if
+				 * no characters fit. */
+    int *lengthPtr)		/* Filled with x-location just after the
+				 * terminating character. */
+{
+    
+    char *biDiSourceString ;
+    int newNumBytes = numBytes;
+
+    newNumBytes =  TkpPerformBidi(source, numBytes, 1 , NULL);
+    biDiSourceString =  ckalloc(newNumBytes+1); 
+    TkpPerformBidi(source, numBytes, 0, biDiSourceString);   /*   This will help some scripts (like arabic-based scripts and herbew) to be displayed properly */
+
+
+    // newNumBytes = numBytes;
+    newNumBytes = Tk_MeasureChars(   tkfont,	
+				    biDiSourceString ,		
+				    newNumBytes,		
+				    maxLength,	        
+				    flags,
+				    lengthPtr);
+    // maybe free bidistring
+    ckfree(biDiSourceString);
+    return newNumBytes;
+}
+
 /*
  * Local Variables:
  * c-basic-offset: 4
