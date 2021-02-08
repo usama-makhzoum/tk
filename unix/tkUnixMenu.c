@@ -98,6 +98,11 @@ static void		GetTearoffEntryGeometry(TkMenu *menuPtr,
 			    TkMenuEntry *mePtr, Tk_Font tkfont,
 			    const Tk_FontMetrics *fmPtr, int *widthPtr,
 			    int *heightPtr);
+
+int  TkpBidiGetCharPosition ( const char *source,
+			      int numBytes,
+			      int index);
+
 
 /*
  *----------------------------------------------------------------------
@@ -858,11 +863,24 @@ DrawMenuUnderline(
 	if (mePtr->underline < len) {
 	    int activeBorderWidth, leftEdge, ch;
 	    const char *label, *start, *end;
+	    int visualUnderlinePos;
+
+
 
 	    label = Tcl_GetString(mePtr->labelPtr);
-	    start = Tcl_UtfAtIndex(label, mePtr->underline);
+
+            #if defined HAVE_XFT /* should apply another macro name for tk-owned l10n features, including BiDi  */
+	    visualUnderlinePos = TkpBidiGetCharPosition (label,
+							 strlen(label),
+							 mePtr->underline);
+	    #else
+	    visualUnderlinePos = mePtr->underline;
+	    #endif
+
+	    start = Tcl_UtfAtIndex(label, visualUnderlinePos);	    
 	    end = start + TkUtfToUniChar(start, &ch);
 
+	    
 	    Tk_GetPixelsFromObj(NULL, menuPtr->tkwin,
 		    menuPtr->activeBorderWidthPtr, &activeBorderWidth);
 	    leftEdge = x + mePtr->indicatorSpace + activeBorderWidth;

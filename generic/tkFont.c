@@ -24,7 +24,17 @@ Tk_MeasureCharsForDraw(
 		       int numBytes,	          
 		       int maxLength,      
 		       int flags,		
-		       int *lengthPtr)	;	
+		       int *lengthPtr)	;
+int
+TkpMeasureCharsForDrawInContext(
+    Tk_Font tkfont,
+    const char *source,
+    int numBytes,
+    int rangeStart,
+    int rangeLength,
+    int maxLength,
+    int flags,
+    int *lengthPtr);
 
 /*
  * The following structure is used to keep track of all the fonts that exist
@@ -1918,9 +1928,9 @@ TkUnderlineCharsInContext(
     TkFont *fontPtr = (TkFont *) tkfont;
     int startX, endX;
 
-    TkpMeasureCharsInContext(tkfont, string, numBytes, 0, firstByte, -1, 0,
+    TkpMeasureCharsForDrawInContext(tkfont, string, numBytes, 0, firstByte, -1, 0,
 	    &startX);
-    TkpMeasureCharsInContext(tkfont, string, numBytes, 0, lastByte, -1, 0,
+    TkpMeasureCharsForDrawInContext(tkfont, string, numBytes, 0, lastByte, -1, 0,
 	    &endX);
 
     XFillRectangle(display, drawable, gc, x + startX,

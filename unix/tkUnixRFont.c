@@ -1446,15 +1446,15 @@ int  TkpPerformBidi( const char *source,
 
 	 }
      
-  FriBidiChar *unicode_source= malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
-    FriBidiStrIndex unicode_len = fribidi_utf8_to_unicode(source, numBytes, unicode_source);
+     FriBidiChar *unicode_source= malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
+     FriBidiStrIndex unicode_len = fribidi_utf8_to_unicode(source, numBytes, unicode_source);
 
 
-    FriBidiChar *unicode_output = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
+     FriBidiChar *unicode_output = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
 
-    FriBidiStrIndex *V2LPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
-    FriBidiStrIndex *L2VPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
-    FriBidiLevel *levels = malloc (FRIBIDI_BIDI_MAX_EXPLICIT_LEVEL*sizeof(FriBidiLevel));
+     FriBidiStrIndex *V2LPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
+     FriBidiStrIndex *L2VPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
+     FriBidiLevel *levels = malloc (FRIBIDI_BIDI_MAX_EXPLICIT_LEVEL*sizeof(FriBidiLevel));
 
 
 
@@ -1490,7 +1490,6 @@ int  TkpPerformBidi( const char *source,
  }
 
 
-
 int
 Tk_MeasureCharsForDraw(
     Tk_Font tkfont,		/* Font in which characters will be drawn. */
@@ -1534,6 +1533,79 @@ Tk_MeasureCharsForDraw(
     ckfree(biDiSourceString);
     return newNumBytes;
 }
+int
+TkpMeasureCharsForDrawInContext(
+    Tk_Font tkfont,
+    const char *source,
+    int numBytes,
+    int rangeStart,
+    int rangeLength,
+    int maxLength,
+    int flags,
+    int *lengthPtr)
+{
+    (void) numBytes; /*unused*/
+
+    return Tk_MeasureCharsForDraw(tkfont, source + rangeStart, rangeLength,
+	    maxLength, flags, lengthPtr);
+}
+
+int  TkpBidiGetCharPosition ( const char *source,
+			      int numBytes,
+			      int index)
+{
+
+    char *bidiString = (char *) malloc(FRIBIDI_MAX_STR_LEN*sizeof(char));
+   
+     if (numBytes < 0)
+	 {
+	     numBytes = strlen(source);
+
+	 }
+     
+  FriBidiChar *unicode_source= malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
+    FriBidiStrIndex unicode_len = fribidi_utf8_to_unicode(source, numBytes, unicode_source);
+
+
+    FriBidiChar *unicode_output = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiChar));
+
+    FriBidiStrIndex *V2LPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
+    FriBidiStrIndex *L2VPositions = malloc (FRIBIDI_MAX_STR_LEN*sizeof(FriBidiStrIndex));
+    FriBidiLevel *levels = malloc (FRIBIDI_BIDI_MAX_EXPLICIT_LEVEL*sizeof(FriBidiLevel));
+
+
+
+    FriBidiParType *pbase_dir = malloc(sizeof(FriBidiParType));
+    *pbase_dir = FRIBIDI_TYPE_ON;
+  
+    fribidi_log2vis(unicode_source,
+		    unicode_len,
+		    pbase_dir,
+		    unicode_output,
+		    V2LPositions,
+		    L2VPositions,
+		    levels);
+    
+  unicode_len  =   fribidi_remove_bidi_marks (unicode_output, unicode_len, V2LPositions, L2VPositions, levels);     
+
+  int result_char = V2LPositions[index];
+
+  
+  
+   free (unicode_source);
+  free(unicode_output);
+
+  free(V2LPositions);
+  free(L2VPositions);
+  free(levels);
+
+  free(pbase_dir);
+  free(bidiString);
+
+  //realloc(bidiString, utf8_output_len );
+  
+  return result_char;
+ }
 
 /*
  * Local Variables:
